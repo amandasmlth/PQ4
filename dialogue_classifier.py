@@ -8,7 +8,11 @@ import numpy as np
 import time
 import string
 
-def get_raw_training_data(filename): 
+def get_raw_training_data(filename):
+    """
+    Gets the raw training data for a file, returning a dictionary where keys
+    are characters and values are lists of lines that the character says.
+    """
     training_data = {}
     with open(filename, 'r') as infile:
         reader = csv.reader(infile)
@@ -19,15 +23,23 @@ def get_raw_training_data(filename):
                 training_data[line[0].lower()] = [line[1].lower()]
     return training_data
 
-def preprocess_words(words, stemmer): 
+def preprocess_words(words, stemmer):
+    """
+    Cleans words of punctuation and returns the stems of verbs. NOTE: Stemmer
+    is not functioning correctly for us, so we don't actually use it here.
+    """
     stems = set() 
     for word in words: 
         for character in string.punctuation:
             word = word.replace(character, '')
-        stems.add(word) #note: come back here when done because the stemmer should only create stems for verbs not other parts of speech 
+        stems.add(word)
     return stems
 
 def organize_raw_training_data(raw_training_data, stemmer):
+    """
+    Takes in raw training data and returns all the words used, a tuple of
+    each word each character says, and a list of all the characters.
+    """
     documents = []
     all_words = set()
     classes = set()
@@ -52,7 +64,12 @@ def organize_raw_training_data(raw_training_data, stemmer):
     words = preprocess_words(all_words, stemmer)
     return words, classes, documents
 
-def create_training_data(words, classes, documents, stemmer): 
+def create_training_data(words, classes, documents, stemmer):
+    """
+    Creates training data for all sentences and output data denoting who
+    is speaking. NOTE: We don't end up using stemmer here, as it is
+    not functioning correctly.
+    """
     output = []
     training_data = []
     for tuple in documents: 
@@ -71,11 +88,10 @@ def create_training_data(words, classes, documents, stemmer):
                     bag.append(0)
             training_data.append(bag)
             output.append(curr_sentence_output)
-    #print("OUTPUT: \n", output)
-    #print("TRAINING: \n", training_data)
     return training_data, output
 
 def sigmoid(z):
+    """ Computes basic sigmoid formula """
     return 1 / (1 + np.exp(-z))
 
 def sigmoid_output_to_derivative(output):
@@ -123,20 +139,23 @@ def get_synapses(epochs, X, y, alpha, synapse_0, synapse_1):
             # If this 10k iteration's error is greater than the last iteration,
             # break out.
             if np.mean(np.abs(layer_2_error)) < last_mean_error:
-                print("delta after "+str(j)+" iterations:" + str(np.mean(np.abs(layer_2_error))) )
+                print("delta after "+str(j)+" iterations:" +
+                      str(np.mean(np.abs(layer_2_error))) )
                 last_mean_error = np.mean(np.abs(layer_2_error))
             else:
-                print("break:", np.mean(np.abs(layer_2_error)), ">", last_mean_error )
+                print("break:", np.mean(np.abs(layer_2_error)), ">",
+                      last_mean_error )
                 break
 
-        # In what direction is the target value?  How much is the change for layer_2?
+        # What direction is the target l2? How much is the change for layer_2?
         layer_2_delta = layer_2_error * sigmoid_output_to_derivative(layer_2)
 
-        # How much did each l1 value contribute to the l2 error (according to the weights)?
+        # How much did each l1 value contribute to the l2 error
+        # (according to the weights)?
         # (Note: .T means transpose and can be accessed via numpy!)
         layer_1_error = layer_2_delta.dot(synapse_1.T)
 
-        # In what direction is the target l1?  How much is the change for layer_1?
+        # What direction is the target l1? How much is the change for layer_1?
         layer_1_delta = layer_1_error * sigmoid_output_to_derivative(layer_1)
 
         # Manage updates.
@@ -144,8 +163,14 @@ def get_synapses(epochs, X, y, alpha, synapse_0, synapse_1):
         synapse_0_weight_update = (layer_0.T.dot(layer_1_delta))
 
         if j > 0:
-            synapse_0_direction_count += np.abs(((synapse_0_weight_update > 0)+0) - ((prev_synapse_0_weight_update > 0) + 0))
-            synapse_1_direction_count += np.abs(((synapse_1_weight_update > 0)+0) - ((prev_synapse_1_weight_update > 0) + 0))
+            synapse_0_direction_count += np.abs(((synapse_0_weight_update >
+                                                  0)+0) -
+                                                ((prev_synapse_0_weight_update
+                                                  > 0) + 0))
+            synapse_1_direction_count += np.abs(((synapse_1_weight_update >
+                                                  0)+0) -
+                                                ((prev_synapse_1_weight_update
+                                                  > 0) + 0))
 
         synapse_1 += alpha * synapse_1_weight_update
         synapse_0 += alpha * synapse_0_weight_update
@@ -174,12 +199,14 @@ def save_synapses(filename, words, classes, synapse_0, synapse_1):
 
 def train(X, y, words, classes, hidden_neurons=10, alpha=1, epochs=50000):
     """Train using specified parameters."""
-    print("Training with {0} neurons and alpha = {1}".format(hidden_neurons, alpha))
+    print("Training with {0} neurons and alpha = {1}".format(hidden_neurons,
+                                                             alpha))
 
     synapse_0, synapse_1 = init_synapses(X, hidden_neurons, classes)
 
     # For each epoch, update our weights
-    synapse_0, synapse_1 = get_synapses(epochs, X, y, alpha, synapse_0, synapse_1)
+    synapse_0, synapse_1 = get_synapses(epochs, X, y, alpha, synapse_0,
+                                        synapse_1)
 
     # Save our work
     save_synapses("synapses.json", words, classes, synapse_0, synapse_1)
@@ -246,25 +273,19 @@ def classify(words, classes, sentence):
     return return_results
 
 def main():
-    
-    """ Testing the shit we did """
+    """ Main function that controls the Neural Network process """
     raw_training_data = get_raw_training_data("dialogue_data.csv")
     stemmer = LancasterStemmer()
-    #reprocess_words(training_data['galadriel'][0], stemmer)
-    #print(organize_raw_training_data(get_raw_training_data("dialogue_data.csv"), stemmer))
-    words, classes, documents = organize_raw_training_data(raw_training_data, stemmer)
-    training_data, output = create_training_data(words, classes, documents, stemmer)
-    # create_training_data(words, classes, documents, stemmer)
-    # print("WORDS:", words)
-    # print("CLASSES:", classes)
-    # print("DOCUMENTS:", documents) #command slash lets you comment things out in mass 
-    # print(stemmer.stem("swimming"))
-    # Comment this out if you have already trained once and don't want to re-train.
+    words, classes, documents = organize_raw_training_data(raw_training_data,
+                                                           stemmer)
+    training_data, output = create_training_data(words, classes, documents,
+                                                 stemmer)
     start_training(list(words), list(classes), training_data, output)
 
     # Classify new sentences.
     classify(list(words), list(classes), "will you look into the mirror?")
-    classify(list(words), list(classes), "mithril, as light as a feather, and as hard as dragon scales.")
+    classify(list(words), list(classes), "mithril, as light as a feather, "
+                                         "and as hard as dragon scales.")
     classify(list(words), list(classes), "the thieves!")
 
 if __name__ == "__main__":
